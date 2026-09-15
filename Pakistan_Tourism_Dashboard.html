@@ -360,6 +360,19 @@ function geomBounds(geometry){
 }
 
 let gbInitGen=0;
+function showGBMapError(msg){
+  const container=document.getElementById('gbleaflet');
+  if(!container)return;
+  container.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px">${msg}</div>`;
+}
+
+function webglSupported(){
+  try{
+    const c=document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (c.getContext('webgl')||c.getContext('experimental-webgl')));
+  }catch(e){ return false; }
+}
+
 function initGBMap(){
   const container=document.getElementById('gbleaflet');
   if(!container) return;
@@ -369,15 +382,38 @@ function initGBMap(){
   gbMapEl=container;
   const myGen=++gbInitGen; // lets a stale 'load' from an abandoned map instance no-op below
 
-  const map=new maplibregl.Map({
-    container,
-    style:GB_STYLE_URL,
-    projection:'globe',           // starts as a globe...
-    center:[20,15], zoom:1.1,     // ...pulled back to show the whole Earth first
-    minZoom:1, maxZoom:15
-  });
+  if(!webglSupported()){
+    showGBMapError('This browser/device doesn\'t support WebGL, which the map needs. Try a recent Chrome, Firefox, or Edge, and make sure hardware acceleration is enabled.');
+    return;
+  }
+
+  let map;
+  try{
+    map=new maplibregl.Map({
+      container,
+      style:GB_STYLE_URL,
+      projection:'globe',           // starts as a globe...
+      center:[20,15], zoom:1.1,     // ...pulled back to show the whole Earth first
+      minZoom:1, maxZoom:15
+    });
+  }catch(e){
+    showGBMapError('The map failed to start ('+(e&&e.message?e.message:'unknown error')+'). Try reloading the page.');
+    return;
+  }
   gbMap=map;
   map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
+
+  map.on('error',e=>{
+    console.error('GB map error:',e&&e.error?e.error:e);
+  });
+
+  // if the style/tiles never finish loading (e.g. openfreemap.org blocked on this network),
+  // surface that instead of leaving a blank map area
+  setTimeout(()=>{
+    if(myGen===gbInitGen && !map.isStyleLoaded()){
+      showGBMapError('The map is taking unusually long to load — this network may be blocking tiles.openfreemap.org. Try a different network, or open the browser console for details.');
+    }
+  },15000);
 
   map.on('load',()=>{
     if(myGen!==gbInitGen) return; // a newer initGBMap() call has already superseded this one
