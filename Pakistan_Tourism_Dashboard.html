@@ -66,10 +66,14 @@ tr:hover td{background:#F7FAFB}
 .gbtabs{display:flex;gap:6px;margin-bottom:10px}
 .gbtab{padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
 .gbtab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-#gbleaflet{height:520px;border-radius:10px;border:1px solid var(--line);margin-top:8px}
-@media(max-width:920px){#gbleaflet{height:420px}}
-#mapgrid.gbmode{grid-template-columns:1fr}
-#mapgrid.gbmode>.panel:first-child{display:none}
+#gbleaflet{height:min(74vh,760px);border-radius:10px;border:1px solid var(--line);margin-top:8px}
+@media(max-width:920px){#gbleaflet{height:56vh}}
+.hero{background:var(--navy);padding:16px 18px 20px}
+.hero-topbar{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:10px;color:#fff}
+.hero-title{font-size:20px;font-weight:700;letter-spacing:.2px}
+.hero-sub{color:#bcd3d6;font-size:12.5px;margin-top:4px}
+.hero-hint{color:#bcd3d6;font-size:12px;font-weight:600}
+.hero-gbsplit{max-width:1280px;margin:0 auto}
 .regionswitch{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .regionswitch label{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700}
 .regionswitch input{padding:8px 12px;border:1px solid var(--line);border-radius:20px;font-size:13px;font-weight:600;color:var(--navy);background:#fff;min-width:260px}
@@ -99,6 +103,32 @@ tr:hover td{background:#F7FAFB}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.8.0/maplibre-gl.min.css"/>
 </head>
 <body>
+<div class="hero" id="heroGB">
+  <div class="hero-topbar">
+    <div>
+      <div class="hero-title">Gilgit-Baltistan — Interactive Map</div>
+      <div class="hero-sub">Districts · tourist points · hotels · live driving routes</div>
+    </div>
+    <div class="hero-hint">Scroll ↓ for the full Pakistan tourism dashboard</div>
+  </div>
+  <div class="gbsplit hero-gbsplit">
+    <div class="gbleft">
+      <div class="gbtoptabs" id="gbtoptabs">
+        <span class="gbtoptab on" data-tab="overview">Overview</span>
+        <span class="gbtoptab" data-tab="points">Tourist points</span>
+        <span class="gbtoptab" data-tab="hotels">Hotels</span>
+        <span class="gbtoptab" data-tab="routing">Routing</span>
+      </div>
+      <div id="gbleaflet"></div>
+      <div id="gblegend"></div>
+      <div class="gbsrc">District boundaries: official District_Boundary shapefile (Gilgit-Baltistan province, 14 districts), spot districts cross-checked by point-in-polygon join. Routes: OSRM (open-source), driving time from Gilgit. Lodging: OpenStreetMap contributors, © ODbL. Base map image: OpenStreetMap tiles, baked in so it renders without a live connection.</div>
+    </div>
+    <div class="gbright" id="gbright">
+      <h3 style="color:#0C3851">Click a district</h3>
+      <div class="cap">Click any district on the map — Overview or Tourist points tab — to see its destinations (name + coordinates), lodging, and local food here.</div>
+    </div>
+  </div>
+</div>
 <div class="wrap">
 <header>
   <div>
@@ -165,19 +195,11 @@ let current=null, activeTab='all';
 
 function renderDetail(sl){
   const d=DATA[sl];
-  if(sl!=='gb' && gbMap){
-    // leaving GB: dispose the map now, while its container is still attached — otherwise the
-    // innerHTML rebuild below rips the canvas out from under it mid-load and it never recovers
-    try{gbMap.remove();}catch(e){}
-    gbMap=null; gbMapEl=null; gbSpotMarkers=[]; gbHotelMarkers=[]; gbSelectedDistId=null;
-  }
   document.getElementById('selBadge').textContent=d.name;
-  document.getElementById('mapgrid').classList.toggle('gbmode', sl==='gb');
   if(document.getElementById('regionSearch')) document.getElementById('regionSearch').value=d.name;
   const foodChips=d.food.map(f=>`<span class="chip">${f}</span>`).join('');
   const festChips=d.festivals.map(f=>`<span class="chip fest">${f}</span>`).join('');
   const el=document.getElementById('detail');
-  const isGB = sl==='gb';
   const destinationsBlock=`
      <div class="controls">
        <input id="q" placeholder="Search spots…" oninput="renderTable('${sl}')"/>
@@ -188,48 +210,19 @@ function renderDetail(sl){
          <option value="FCDO-advise-against">FCDO advise against</option></select>
      </div>
      <div class="tlist"><table><thead><tr><th>Spot</th><th>District</th><th>Type</th><th>Season</th><th>Coord</th><th>Flag</th><th>Src</th></tr></thead><tbody id="tbody"></tbody></table></div>`;
-  if(isGB){
-    el.innerHTML=`
-     <div class="gbsplit">
-       <div class="gbleft">
-         <div class="gbtoptabs" id="gbtoptabs">
-           <span class="gbtoptab on" data-tab="overview">Overview</span>
-           <span class="gbtoptab" data-tab="points">Tourist points</span>
-           <span class="gbtoptab" data-tab="hotels">Hotels</span>
-           <span class="gbtoptab" data-tab="routing">Routing</span>
-         </div>
-         <div id="gbleaflet"></div>
-         <div id="gblegend"></div>
-         <div class="gbsrc">District boundaries: official District_Boundary shapefile (Gilgit-Baltistan province, 14 districts), spot districts cross-checked by point-in-polygon join. Routes: OSRM (open-source), driving time from Gilgit. Lodging: OpenStreetMap contributors, © ODbL. Base map image: OpenStreetMap tiles, baked in so it renders without a live connection.</div>
-       </div>
-       <div class="gbright" id="gbright">
-         <h3 style="color:#0C3851">Click a district</h3>
-         <div class="cap">Click any district on the map — Overview or Tourist points tab — to see its destinations (name + coordinates), lodging, and local food here.</div>
-       </div>
-     </div>
-     <div class="block" style="margin-top:14px"><div class="bt">All destinations (${d.count})</div>${destinationsBlock}</div>`;
-  } else {
-    el.innerHTML=`
+  el.innerHTML=`
      <h3>${d.name}</h3>
-     <div class="cap">Capital: ${d.capital} · ${d.count} catalogued destinations</div>
+     <div class="cap">Capital: ${d.capital} · ${d.count} catalogued destinations${sl==='gb'?' · interactive map ↑ at the top of the page':''}</div>
      <div class="block"><div class="bt">When to visit</div><div class="when">${d.when}</div></div>
      <div class="block"><div class="bt">Signature food</div><div class="chips">${foodChips}</div></div>
      <div class="block"><div class="bt">Culture</div><div class="cult">${d.culture}</div></div>
      <div class="block"><div class="bt">Festivals &amp; events</div><div class="chips">${festChips}</div></div>
      <div class="block"><div class="bt">All destinations (${d.count})</div>${destinationsBlock}</div>`;
-  }
   // populate type filter
   const types=[...new Set(d.spots.map(p=>p.t))].sort();
   const tf=document.getElementById('typef');
   types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;tf.appendChild(o);});
   renderTable(sl);
-  if(isGB){
-    document.querySelectorAll('#gbtoptabs .gbtoptab').forEach(t=>{
-      t.onclick=()=>setGBTab(t.dataset.tab);
-    });
-    initGBMap();
-    setTimeout(()=>{if(gbMap) gbMap.resize();},60);
-  }
 }
 
 
@@ -705,6 +698,14 @@ const gbPath=document.querySelector('.prov[data-prov="gb"]');
 if(gbPath)gbPath.classList.add('sel');
 current='gb';
 renderDetail('gb');
+
+// the interactive GB map lives permanently in the hero at the top of the page, independent of
+// whichever region is selected in the dashboard below — initialize it once here.
+document.querySelectorAll('#gbtoptabs .gbtoptab').forEach(t=>{
+  t.onclick=()=>setGBTab(t.dataset.tab);
+});
+initGBMap();
+setTimeout(()=>{if(gbMap) gbMap.resize();},60);
 </script>
 </body>
 </html>
