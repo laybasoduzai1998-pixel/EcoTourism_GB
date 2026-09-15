@@ -112,8 +112,8 @@ tr:hover td{background:#F7FAFB}
 
 <div class="note">Click a province on the map to load its profile — best season, signature food, culture, festivals, and every catalogued spot. Sovereignty: AJK &amp; GB rendered as Pakistan; IIOJK shown disputed (grey, dashed) and non-clickable per AGN cartographic policy.</div>
 
-<div class="regionswitch"><label for="regionSearch">Search</label>
-  <input id="regionSearch" list="regionOptions" autocomplete="off" placeholder="Search a region or a Gilgit-Baltistan district — e.g. Gilgit-Baltistan, Hunza, Sindh…"/>
+<div class="regionswitch"><label for="regionSearch">District</label>
+  <input id="regionSearch" list="regionOptions" autocomplete="off" placeholder="Search a Gilgit-Baltistan district — e.g. Hunza, Skardu, Astore…"/>
   <datalist id="regionOptions"></datalist>
 </div>
 
@@ -592,17 +592,13 @@ document.querySelectorAll('.prov[data-prov]').forEach(p=>{
   });
 });
 
-// search bar — jumps to any of Pakistan's 7 regions, or straight into a Gilgit-Baltistan district
+// search bar — Gilgit-Baltistan overview, or straight into any of its 14 districts
 const regionSearch=document.getElementById('regionSearch');
 const regionOptions=document.getElementById('regionOptions');
 const SEARCH_INDEX={};
-ORDER.forEach(sl=>{
-  const label=DATA[sl].name;
-  SEARCH_INDEX[label.toLowerCase()]={kind:'region',sl,label};
-});
+SEARCH_INDEX[DATA.gb.name.toLowerCase()]={kind:'region',sl:'gb',label:DATA.gb.name};
 Object.keys(DISTRICT_COLOR).forEach(d=>{
-  const label=d+' — Gilgit-Baltistan district';
-  SEARCH_INDEX[label.toLowerCase()]={kind:'district',name:d,label};
+  SEARCH_INDEX[d.toLowerCase()]={kind:'district',name:d,label:d};
 });
 Object.values(SEARCH_INDEX).forEach(entry=>{
   const o=document.createElement('option');
